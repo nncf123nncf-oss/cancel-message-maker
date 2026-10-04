@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>キャンセル・お断り連絡文メーカー</title>
+<meta name="description" content="予約のキャンセルやお断りの連絡文を、場面と理由を選ぶだけで下書きします。LINE・メール・DM別。入力はこの端末の中だけで処理し、保存しません。">
+<style>
+  :root {
+    --bg: #f5f6f4; --surface: #ffffff; --ink: #1d2320; --ink2: #424a46; --ink3: #626b66;
+    --line: #d3d9d5; --line-strong: #7f8985; --accent: #0f6b5c; --accent-ink: #ffffff; --accent-soft: #e3f1ed;
+    --warn-bg: #fff4d6; --warn-line: #c99a2e; --warn-ink: #5a3d00; --mark: #ffe48a; --mark-ink: #3a2a00;
+    --danger: #b3261e; --ok: #1b6b34;
+    --font: "Hiragino Sans","Yu Gothic","BIZ UDPGothic","Noto Sans JP",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121614; --surface: #1c211f; --ink: #eef2ef; --ink2: #c6cdc9; --ink3: #a2aba6;
+      --line: #38403c; --line-strong: #7b8681; --accent: #6fd2bc; --accent-ink: #08201a; --accent-soft: #1d3a33;
+      --warn-bg: #3a2f10; --warn-line: #8a6d2a; --warn-ink: #ffe0a0; --mark: #6b5510; --mark-ink: #fff0c0;
+      --danger: #ff8f86; --ok: #7fd49a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.6; }
+  main { max-width: 1040px; margin: 0 auto; padding: 16px 16px 32px; }
+  h1 { font-size: 22px; line-height: 1.3; margin: 8px 0 8px; }
+  h2 { font-size: 17px; line-height: 1.4; margin: 0 0 8px; }
+  p { margin: 0 0 8px; }
+  .lead { color: var(--ink2); }
+  .note { font-size: 14px; color: var(--ink2); }
+  .notice { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 12px 14px; margin: 12px 0 16px; font-size: 14px; }
+  .notice p:last-child { margin-bottom: 0; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 0 0 14px; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend { padding: 0; font-weight: 700; font-size: 17px; margin: 0 0 8px; }
+  .hint { font-size: 13px; color: var(--ink3); margin: 2px 0 0; }
+  .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+  /* 選択肢（ラジオ）: input は隠し、隣の span をボタンとして見せる */
+  .opts { display: grid; gap: 8px; margin: 0; padding: 0; }
+  .opts.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .opts.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .opt { position: relative; display: block; margin: 0; }
+  .opt > span { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); cursor: pointer; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
+  .opts.two .opt > span { min-height: 56px; }
+  .opts.three .opt > span { justify-content: center; text-align: center; padding: 8px 4px; }
+  .opt input:checked + span { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 700; }
+  .opt input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .opt input:checked + span::before { content: "\2713"; margin-right: 6px; color: var(--accent); font-weight: 700; flex: 0 0 auto; }
+  .opts.three .opt input:checked + span::before { margin-right: 2px; }
+
+  label.lb { display: block; font-weight: 600; margin: 0 0 4px; }
+  .field { margin: 0 0 12px; }
+  .field:last-child { margin-bottom: 0; }
+  input[type="text"], input[type="tel"] {
+    width: 100%; max-width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--line-strong); border-radius: 6px; padding: 10px 12px; min-height: 44px;
+  }
+  .chk { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); cursor: pointer; }
+  .chk input { width: 22px; height: 22px; flex: 0 0 22px; margin: 0; }
+  .chk span { overflow-wrap: anywhere; }
+  button {
+    font: inherit; font-size: 16px; min-height: 44px; padding: 8px 14px; border-radius: 6px; cursor: pointer;
+    background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong);
+  }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .sub { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  [hidden] { display: none !important; }
+
+  /* 出来上がった文面 */
+  .out { background: var(--surface); border: 2px solid var(--accent); border-radius: 8px; padding: 14px; }
+  .warn { background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink); border-radius: 6px; padding: 8px 12px; font-size: 14px; margin: 0 0 10px; }
+  .subj { font-size: 14px; color: var(--ink2); margin: 0 0 10px; padding: 8px 12px; background: var(--bg); border-radius: 6px; overflow-wrap: anywhere; }
+  .subj b { color: var(--ink); }
+  .body { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: 16px; line-height: 1.8; margin: 0 0 12px; }
+  .body mark { background: var(--mark); color: var(--mark-ink); border-radius: 3px; padding: 0 2px; }
+  .copyrow { display: flex; flex-wrap: wrap; gap: 8px; }
+  .copyrow button { flex: 1 1 140px; }
+  .copyrow button.primary { flex: 2 1 200px; }
+  .msg { min-height: 24px; font-size: 14px; color: var(--ink2); margin: 8px 0 0; }
+  .msg.ok { color: var(--ok); font-weight: 600; }
+  .msg.err { color: var(--danger); font-weight: 600; }
+  #manual { width: 100%; font: inherit; font-size: 16px; line-height: 1.6; padding: 10px 12px; margin-top: 8px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink); min-height: 160px; }
+  .count { font-size: 13px; color: var(--ink3); margin: 6px 0 0; }
+
+  .mw-footer { box-sizing: border-box; width: 100%; max-width: 100%; margin: 24px 0 0; padding: 16px; background: #F7F7F8;
+    border: 1px solid #D8D8DC; border-radius: 6px; color: #3A3A3E; font-family: system-ui, sans-serif; font-size: 12px; line-height: 1.7; }
+  .mw-footer p { margin: 0 0 6px; } .mw-footer p:last-child { margin-bottom: 0; } .mw-footer a { color: #0B5AA6; display: inline-block; padding: 13px 0; }
+
+  @media (min-width: 880px) {
+    main { padding: 24px 16px 40px; }
+    h1 { font-size: 24px; }
+    .cols { display: grid; grid-template-columns: 5fr 7fr; gap: 24px; align-items: start; }
+    .opts.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .outcol { position: sticky; top: 16px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>キャンセル・お断り連絡文メーカー</h1>
+  <p class="lead">予約のキャンセルやお断りを、お客様にどう伝えるか。場面と理由を選ぶと、LINE・メール・DM向けの丁寧な文面を下書きします。</p>
+  <div class="notice">
+    <p>下書きを作る道具です。送る前に必ず読み返して、お店の事情に合わせて直してください。</p>
+    <p>キャンセル料の金額や、規約・法律上どうなるかの判断は、この道具では行いません。</p>
+  </div>
+
+  <div class="cols">
+    <div class="incol">
+      <section class="panel">
+        <fieldset id="fsScene">
+          <legend>1. どんな連絡ですか</legend>
+          <div class="opts two" id="scenes"></div>
+        </fieldset>
+      </section>
+
+      <section class="panel">
+        <fieldset id="fsReason">
+          <legend id="reasonLegend">2. 理由</legend>
+          <div class="opts" id="reasons"></div>
+        </fieldset>
+      </section>
+
+      <section class="panel">
+        <h2>3. 日時・お名前</h2>
+        <div class="field">
+          <label class="lb" for="dt" id="dtLabel">予約の日時</label>
+          <input type="text" id="dt" autocomplete="off" placeholder="例: 10月12日（日）14:00">
+        </div>
+        <div class="field">
+          <label class="lb" for="name">お客様のお名前（任意）</label>
+          <input type="text" id="name" autocomplete="off" placeholder="例: 山田">
+          <p class="hint">「様」は自動でつきます。空欄なら「お客様」と書きます。</p>
+        </div>
+        <div class="field">
+          <label class="lb" for="shop">お店・教室の名前（署名に使います）</label>
+          <input type="text" id="shop" autocomplete="off" placeholder="例: ヘアサロン ひなた">
+        </div>
+      </section>
+
+      <section class="panel">
+        <fieldset id="fsAlt">
+          <legend>4. 代わりの案内</legend>
+          <div class="opts" id="alts"></div>
+          <div class="field sub" id="altTextWrap" hidden>
+            <label class="lb" for="altText">代わりの日時</label>
+            <input type="text" id="altText" autocomplete="off" placeholder="例: 10月19日（日）14:00">
+          </div>
+        </fieldset>
+        <div class="sub" id="refundWrap">
+          <label class="chk"><input type="checkbox" id="refund"><span>お支払い済みの分は返金を案内する</span></label>
+        </div>
+        <fieldset class="sub" id="feeWrap" hidden>
+          <legend style="font-size:16px">キャンセル料の扱い</legend>
+          <div class="opts" id="fees"></div>
+          <div class="field sub" id="feeAmtWrap" hidden>
+            <label class="lb" for="feeAmt">金額（円）</label>
+            <input type="tel" inputmode="numeric" id="feeAmt" autocomplete="off" placeholder="例: 3000">
+          </div>
+          <p class="hint">金額の可否・根拠はご自身で判断してください。この道具は決めません。</p>
+        </fieldset>
+      </section>
+
+      <section class="panel">
+        <fieldset id="fsMedium">
+          <legend>5. 送る場所</legend>
+          <div class="opts three" id="media"></div>
+        </fieldset>
+        <p class="hint" style="margin-top:10px"><a href="#outTop">文面へ移動する</a></p>
+      </section>
+    </div>
+
+    <div class="outcol">
+      <section class="out" id="outTop" aria-live="polite">
+        <h2>出来上がった文面</h2>
+        <div class="warn" id="warn" hidden></div>
+        <div class="subj" id="subj" hidden></div>
+        <div class="body" id="body"></div>
+        <div class="copyrow">
+          <button type="button" class="primary" id="copyBody">本文をコピー</button>
+          <button type="button" id="copySubj" hidden>件名をコピー</button>
+        </div>
+        <p class="msg" id="msg" role="status"></p>
+        <textarea id="manual" readonly hidden aria-label="コピー用の文面（選択してコピーしてください）"></textarea>
+        <p class="count" id="count"></p>
+      </section>
+    </div>
+  </div>
+
+  <footer class="mw-footer">
+    <p>みちAIワークス（MICHI AI WORKS）／代表 田中　泉</p>
+    <p>運営: <a href="https://michi-portfolio.vercel.app/" rel="noopener">みちAIワークス 公式サイト</a>（https://michi-portfolio.vercel.app/ ）／ お問い合わせ: <a href="mailto:nncf123nncf@gmail.com">nncf123nncf@gmail.com</a></p>
+    <p>入力した内容はこのページの中（お使いの端末のブラウザ）だけで処理し、サーバーには送信せず、保存もしません。アクセス解析（Cloudflare Web Analytics）で、ページの閲覧状況（閲覧数・参照元・ブラウザの種類など）を計測しています。入力内容は送信しません。</p>
+    <p>決まった言い回しに入力を差し込んで作る下書きです。文面の内容が状況に合うか、金額や条件の扱いが適切かは、必ずご自身で確認してください。法的な有効性は判断しません。</p>
+    <p>ログイン・会員登録・パスワードの入力を求めることはありません。</p>
+  </footer>
+</main>
+
+<script>
+var CM = (function () {
+  'use strict';
+
+  var PH_DT = '〔日時〕', PH_ALT = '〔代わりの日時〕', PH_SHOP = '〔お店の名前〕', PH_AMT = '〔金額〕';
+
+  var MEDIA = [
+    { id: 'line', label: 'LINE' },
+    { id: 'mail', label: 'メール' },
+    { id: 'dm',   label: 'DM' }
+  ];
+
+  /* 場面ごとの定義。reasons[].t は「、」の前に置く言い回し */
+  var SCENES = [
+    { id: 'own', label: 'こちらの都合で|キャンセル', reasonLegend: '2. 理由（こちらの事情）', dtLabel: '予約の日時',
+      refund: true,
+      alts: { propose: '代わりの日時を提案する', later: 'あらためてこちらから連絡する', none: '触れない' },
+      reasons: [
+        { id: 'equip', label: '設備に不具合が出た', t: '設備に不具合が出てしまい' },
+        { id: 'staff', label: 'スタッフの都合がつかない', t: 'スタッフの都合がつかなくなってしまい' },
+        { id: 'closed', label: '臨時休業にする', t: '臨時休業とさせていただくことになり' },
+        { id: 'none', label: '理由は伝えない', t: 'こちらの事情により' }
+      ] },
+    { id: 'full', label: '満席でお断り', reasonLegend: '2. 理由', dtLabel: 'ご希望の日時',
+      refund: false,
+      alts: { propose: '代わりの日時を提案する', later: '空きが出たら連絡する', none: '触れない' },
+      reasons: [
+        { id: 'full', label: 'すでに満席', t: 'すでに満席となっており' },
+        { id: 'private', label: '貸切の予約が入っている', t: '貸切のご予約が入っており' },
+        { id: 'limit', label: 'お受けできる枠に限りがある', t: 'お受けできる枠に限りがあり' },
+        { id: 'none', label: '理由は伝えない', t: 'あいにく都合がつかず' }
+      ] },
+    { id: 'sick', label: '体調不良で|お休み', reasonLegend: '2. 理由', dtLabel: '予約の日時',
+      refund: true,
+      alts: { propose: '代わりの日時を提案する', later: 'あらためてこちらから連絡する', none: '触れない' },
+      reasons: [
+        { id: 'self', label: '私の体調不良', t: '私が体調を崩してしまい' },
+        { id: 'staff', label: 'スタッフの体調不良', t: 'スタッフが体調を崩してしまい' },
+        { id: 'family', label: '家族の急な事情', t: '家族の急な事情があり' },
+        { id: 'none', label: '理由は伝えない', t: 'やむを得ない事情により' }
+      ] },
+    { id: 'weather', label: '天候・災害で|中止', reasonLegend: '2. 理由', dtLabel: '予約の日時',
+      refund: true,
+      alts: { propose: '代わりの日時を提案する', later: '落ち着いたらこちらから連絡する', none: '触れない' },
+      reasons: [
+        { id: 'typhoon', label: '台風が近づいている', t: '台風が近づいており' },
+        { id: 'snow', label: '大雪が予想される', t: '大雪が予想されており' },
+        { id: 'transit', label: '交通機関の乱れが見込まれる', t: '交通機関の乱れが見込まれており' },
+        { id: 'disaster', label: '災害の影響がある', t: '災害の影響があり' },
+        { id: 'weather', label: '天候の影響がある', t: '天候の影響があり' }
+      ] },
+    { id: 'reply', label: 'お客様の|キャンセルへの返信', reasonLegend: '2. お客様のキャンセル理由', dtLabel: '予約の日時',
+      refund: true, fee: true,
+      alts: { propose: '次回の日時を提案する', later: 'また連絡をお願いする', none: '触れない' },
+      reasons: [
+        { id: 'busy', label: 'ご都合がつかなくなった', ack: 'ご都合がつかなくなったとのこと、承知いたしました。どうぞお気になさらないでください。' },
+        { id: 'sick', label: 'ご体調が優れない', ack: 'ご体調が優れないとのこと、どうぞお大事になさってください。' },
+        { id: 'family', label: 'ご家族の事情', ack: 'ご家族のご事情とのこと、承知いたしました。どうぞお気になさらないでください。' },
+        { id: 'none', label: '理由には触れない', ack: '' }
+      ] },
+    { id: 'resched', label: '日程変更の|お願い', reasonLegend: '2. 理由（こちらの事情）', dtLabel: '予約の日時',
+      refund: false,
+      alts: { propose: '候補の日時を提案する', later: '候補をまとめて後で連絡する', none: '日程を教えてもらう' },
+      reasons: [
+        { id: 'staff', label: 'スタッフの都合がつかない', t: 'スタッフの都合がつかなくなってしまい' },
+        { id: 'equip', label: '設備の点検・修理が入った', t: '設備の点検・修理が入ってしまい' },
+        { id: 'sched', label: '別の予定と調整がつかない', t: '別の予定との調整がつかず' },
+        { id: 'none', label: '理由は伝えない', t: 'こちらの都合で' }
+      ] }
+  ];
+
+  var FEES = { skip: '触れない', waive: '今回はいただかない', ask: '金額を入れてご相談する' };
+
+  function byId(list, id) { for (var i = 0; i < list.length; i++) { if (list[i].id === id) return list[i]; } return list[0]; }
+
+  function trim(s) { return String(s == null ? '' : s).replace(/^[\s　]+|[\s　]+$/g, ''); }
+
+  function fmtAmount(raw) {
+    var d = String(raw == null ? '' : raw).replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/[^0-9]/g, '');
+    if (!d) return '';
+    d = d.replace(/^0+(?=\d)/, '');
+    return d.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '円';
+  }
+
+  function build(st) {
+    var scene = byId(SCENES, st.scene);
+    var reason = byId(scene.reasons, st.reason);
+    var fm = st.medium === 'mail';
+    var medium = st.medium === 'mail' || st.medium === 'dm' ? st.medium : 'line';
+
+    var dt = trim(st.dt) || PH_DT;
+    var shop = trim(st.shop) || PH_SHOP;
+    var nm = trim(st.name);
+    var callee = (nm ? nm + '様' : 'お客様');
+    var alt = trim(st.altText) || PH_ALT;
+    var altMode = st.alt || 'none';
+
+    var greet;
+    if (medium === 'mail') greet = callee + '\n\nいつもご利用いただきありがとうございます。' + shop + 'です。';
+    else if (medium === 'dm') greet = callee + '\nご連絡失礼いたします。' + shop + 'です。';
+    else greet = callee + '\nお世話になっております。' + shop + 'です。';
+
+    var apologyBooked = fm ? 'ご予定を空けていただいていたにもかかわらず、このようなご連絡となり、誠に申し訳ございません。'
+                           : 'ご予定を空けていただいていたのに、申し訳ありません。';
+    var apologyDecline = fm ? 'ご希望に沿えず、誠に申し訳ございません。' : 'ご希望に沿えず申し訳ありません。';
+    var apologyAsk = fm ? 'お手数をおかけしますが、ご検討いただけますと幸いです。' : 'お手数をおかけしますが、ご検討をお願いします。';
+    var close = medium === 'mail' ? '何卒よろしくお願い申し上げます。' : (medium === 'dm' ? 'よろしくお願いいたします。' : 'よろしくお願いします。');
+    var sign = medium === 'mail' ? '――――――――\n' + shop : (medium === 'dm' ? shop : '');
+
+    var paras = [];
+    var subject = '';
+    var refundLine = 'すでにお支払いいただいている分は、返金の方法を別途ご案内いたします。';
+
+    if (scene.id === 'own') {
+      subject = '【お詫び】' + dt + 'のご予約について';
+      paras.push(dt + 'にご予約をいただいておりましたが、' + reason.t + '、ご予約をお受けすることができなくなりました。');
+      paras.push(apologyBooked);
+      if (altMode === 'propose') paras.push('つきましては、' + alt + 'でしたらご案内できます。ご都合はいかがでしょうか。');
+      else if (altMode === 'later') paras.push('あらためてご都合をお伺いし、代わりの日程をご相談させていただけますでしょうか。');
+    } else if (scene.id === 'full') {
+      subject = 'ご予約のご希望について（お返事）';
+      paras.push('ご予約のご希望をいただき、ありがとうございます。');
+      paras.push(dt + 'のご希望は、' + reason.t + '、今回はお受けすることができませんでした。' + apologyDecline);
+      if (altMode === 'propose') paras.push(alt + 'でしたらご用意できます。いかがでしょうか。');
+      else if (altMode === 'later') paras.push('空きが出ましたら、あらためてご連絡いたします。');
+    } else if (scene.id === 'sick') {
+      subject = '【お知らせ】' + dt + 'のご予約について';
+      paras.push(dt + 'にご予約をいただいておりましたが、' + reason.t + '、当日のご予約への対応が難しくなってしまいました。');
+      paras.push(apologyBooked);
+      if (altMode === 'propose') paras.push('つきましては、' + alt + 'でしたらご案内できます。ご都合はいかがでしょうか。');
+      else if (altMode === 'later') paras.push('状況が落ち着きましたら、あらためてご連絡のうえ、代わりの日程をご相談させてください。');
+    } else if (scene.id === 'weather') {
+      subject = '【お知らせ】' + dt + 'のご予約について（お休みのご連絡）';
+      paras.push(dt + 'のご予約について、' + reason.t + '、お客様とスタッフの安全を考え、当日はお休みとさせていただくことにいたしました。');
+      paras.push(apologyBooked);
+      if (altMode === 'propose') paras.push('代わりに、' + alt + 'でしたらご案内できます。ご都合はいかがでしょうか。');
+      else if (altMode === 'later') paras.push('天候が落ち着きましたら、あらためてご連絡し、代わりの日程をご相談させてください。');
+    } else if (scene.id === 'reply') {
+      subject = '【' + dt + '】ご予約キャンセルの件、承知いたしました';
+      paras.push(dt + 'のご予約のキャンセル、承知いたしました。ご連絡をありがとうございます。');
+      if (reason.ack) paras.push(reason.ack);
+      if (st.fee === 'waive') paras.push('今回のキャンセルに伴うキャンセル料はいただきませんので、ご安心ください。');
+      else if (st.fee === 'ask') paras.push('なお、キャンセル料として' + (fmtAmount(st.feeAmt) || PH_AMT) + 'について、ご相談させていただけますでしょうか。');
+      if (altMode === 'propose') paras.push('もしよろしければ、' + alt + 'はいかがでしょうか。');
+      else if (altMode === 'later') paras.push('またご都合のよいときに、お気軽にご連絡ください。');
+      close = medium === 'mail' ? 'またのご利用を心よりお待ちしております。' : 'またのご利用をお待ちしております。';
+    } else { /* resched */
+      subject = '【ご相談】' + dt + 'のご予約の日程について';
+      paras.push(dt + 'にご予約をいただいておりましたが、' + reason.t + '、日程を変更していただくことは可能でしょうか。');
+      if (altMode === 'propose') paras.push('もし可能でしたら、' + alt + 'はいかがでしょうか。ご都合が合わない場合は、ほかの日程もご相談ください。');
+      else if (altMode === 'later') paras.push('こちらで候補日を整理し、あらためてご連絡いたします。');
+      else paras.push('ご都合のよい日程をお知らせいただけますでしょうか。');
+      paras.push(apologyAsk);
+    }
+
+    if (scene.refund && st.refund) paras.push(refundLine);
+
+    var body = greet + '\n\n' + paras.join('\n\n') + '\n\n' + close + (sign ? '\n\n' + sign : '');
+    var found = body.match(/〔[^〕]*〕/g) || [];
+    if (medium === 'mail') { var s2 = subject.match(/〔[^〕]*〕/g) || []; found = found.concat(s2); }
+    var uniq = [];
+    for (var i = 0; i < found.length; i++) { if (uniq.indexOf(found[i]) < 0) uniq.push(found[i]); }
+
+    return { subject: medium === 'mail' ? subject : '', body: body, placeholders: uniq, medium: medium };
+  }
+
+  return { build: build, SCENES: SCENES, MEDIA: MEDIA, FEES: FEES, fmtAmount: fmtAmount };
+})();
+
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { scene: 'own', reason: 'equip', alt: 'later', fee: 'skip', medium: 'line' };
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  function radioHtml(name, id, label, checked) {
+    return '<label class="opt"><input class="vh" type="radio" name="' + name + '" value="' + id + '"' + (checked ? ' checked' : '') + '><span>' + esc(label).replace(/\|/g, '<br>') + '</span></label>';
+  }
+
+  function sceneObj() { for (var i = 0; i < CM.SCENES.length; i++) { if (CM.SCENES[i].id === state.scene) return CM.SCENES[i]; } return CM.SCENES[0]; }
+
+  function drawStatic() {
+    var h = '', i;
+    for (i = 0; i < CM.SCENES.length; i++) h += radioHtml('scene', CM.SCENES[i].id, CM.SCENES[i].label, CM.SCENES[i].id === state.scene);
+    $('scenes').innerHTML = h;
+    h = '';
+    for (i = 0; i < CM.MEDIA.length; i++) h += radioHtml('medium', CM.MEDIA[i].id, CM.MEDIA[i].label, CM.MEDIA[i].id === state.medium);
+    $('media').innerHTML = h;
+    h = '';
+    var fk = ['skip', 'waive', 'ask'];
+    for (i = 0; i < fk.length; i++) h += radioHtml('fee', fk[i], CM.FEES[fk[i]], fk[i] === state.fee);
+    $('fees').innerHTML = h;
+  }
+
+  function drawScene() {
+    var sc = sceneObj(), h = '', i;
+    $('reasonLegend').textContent = sc.reasonLegend;
+    for (i = 0; i < sc.reasons.length; i++) h += radioHtml('reason', sc.reasons[i].id, sc.reasons[i].label, sc.reasons[i].id === state.reason);
+    $('reasons').innerHTML = h;
+    $('dtLabel').textContent = sc.dtLabel;
+    h = '';
+    var ak = ['propose', 'later', 'none'];
+    for (i = 0; i < ak.length; i++) h += radioHtml('alt', ak[i], sc.alts[ak[i]], ak[i] === state.alt);
+    $('alts').innerHTML = h;
+    $('refundWrap').hidden = !sc.refund;
+    $('feeWrap').hidden = !sc.fee;
+  }
+
+  function readInputs() {
+    state.dt = $('dt').value; state.name = $('name').value; state.shop = $('shop').value;
+    state.altText = $('altText').value; state.feeAmt = $('feeAmt').value;
+    state.refund = $('refund').checked;
+  }
+
+  var last = { subject: '', body: '' };
+
+  function render() {
+    readInputs();
+    var sc = sceneObj();
+    $('altTextWrap').hidden = state.alt !== 'propose';
+    $('feeAmtWrap').hidden = !(sc.fee && state.fee === 'ask');
+    var st = {
+      scene: state.scene, reason: state.reason, dt: state.dt, name: state.name, shop: state.shop,
+      alt: state.alt, altText: state.altText, refund: sc.refund ? state.refund : false,
+      fee: sc.fee ? state.fee : 'skip', feeAmt: state.feeAmt, medium: state.medium
+    };
+    var r = CM.build(st);
+    last = r;
+    var html = esc(r.body).replace(/〔[^〕]*〕/g, function (m) { return '<mark>' + m + '</mark>'; });
+    $('body').innerHTML = html;
+    var isMail = r.medium === 'mail';
+    $('subj').hidden = !isMail;
+    $('copySubj').hidden = !isMail;
+    if (isMail) $('subj').innerHTML = '<b>件名</b>　' + esc(r.subject).replace(/〔[^〕]*〕/g, function (m) { return '<mark>' + m + '</mark>'; });
+    var w = $('warn');
+    if (r.placeholders.length) {
+      w.hidden = false;
+      w.textContent = '未入力の箇所が残っています（黄色の〔 〕）：' + r.placeholders.join('、') + '。入力するか、送る前に直してください。';
+    } else { w.hidden = true; w.textContent = ''; }
+    $('count').textContent = '本文 ' + r.body.length + '文字';
+    $('msg').textContent = ''; $('msg').className = 'msg';
+    $('manual').hidden = true;
+  }
+
+  function setMsg(t, cls) { var m = $('msg'); m.textContent = t; m.className = 'msg ' + (cls || ''); }
+
+  function copyText(text, label) {
+    function ok() { setMsg(label + 'をコピーしました。送る前に読み返してください。', 'ok'); }
+    function manual() {
+      var ta = $('manual'); ta.hidden = false; ta.value = text;
+      try { ta.focus(); ta.select(); ta.setSelectionRange(0, text.length); } catch (e) {}
+      setMsg('自動でコピーできませんでした。下の欄を選んで、コピーしてください。', 'err');
+    }
+    function legacy() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.left = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      var done = false;
+      try { ta.focus(); ta.select(); ta.setSelectionRange(0, text.length); done = document.execCommand('copy'); } catch (e) { done = false; }
+      document.body.removeChild(ta);
+      if (done) ok(); else manual();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(ok, legacy);
+    } else { legacy(); }
+  }
+
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (!t || !t.name) return;
+    if (t.name === 'scene') {
+      state.scene = t.value; var sc = sceneObj(); state.reason = sc.reasons[0].id; drawScene();
+    } else if (t.name === 'reason') state.reason = t.value;
+    else if (t.name === 'alt') state.alt = t.value;
+    else if (t.name === 'fee') state.fee = t.value;
+    else if (t.name === 'medium') state.medium = t.value;
+    render();
+  });
+  ['dt', 'name', 'shop', 'altText', 'feeAmt'].forEach(function (id) { $(id).addEventListener('input', render); });
+  $('refund').addEventListener('change', render);
+  $('copyBody').addEventListener('click', function () { copyText(last.body, '本文'); });
+  $('copySubj').addEventListener('click', function () { copyText(last.subject, '件名'); });
+
+  drawStatic(); drawScene(); render();
+})();
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon='{"token": "b4c9f7e78daf4edb84ef52b88633f649"}'></script>
+</body>
+</html>
