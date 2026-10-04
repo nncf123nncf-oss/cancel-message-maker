@@ -44,7 +44,7 @@
   .opts.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .opt { position: relative; display: block; margin: 0; }
   .opt > span { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); cursor: pointer; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
-  .opts.two .opt > span { min-height: 56px; }
+  .opts.two .opt > span { min-height: 60px; }
   .opts.three .opt > span { justify-content: center; text-align: center; padding: 8px 4px; }
   .opt input:checked + span { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 700; }
   .opt input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
@@ -95,7 +95,7 @@
     h1 { font-size: 24px; }
     .cols { display: grid; grid-template-columns: 5fr 7fr; gap: 24px; align-items: start; }
     .opts.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .outcol { position: sticky; top: 16px; }
+    .outcol { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; }
   }
 </style>
 </head>
@@ -133,7 +133,7 @@
         <div class="field">
           <label class="lb" for="name">お客様のお名前（任意）</label>
           <input type="text" id="name" autocomplete="off" placeholder="例: 山田">
-          <p class="hint">「様」は自動でつきます。空欄なら「お客様」と書きます。</p>
+          <p class="hint">「様」は自動でつきます（入力は不要）。空欄なら「お客様」と書きます。</p>
         </div>
         <div class="field">
           <label class="lb" for="shop">お店・教室の名前（署名に使います）</label>
@@ -159,6 +159,7 @@
           <div class="field sub" id="feeAmtWrap" hidden>
             <label class="lb" for="feeAmt">金額（円）</label>
             <input type="tel" inputmode="numeric" id="feeAmt" autocomplete="off" placeholder="例: 3000">
+            <p class="hint">数字だけ入力してください（例: 3000）。</p>
           </div>
           <p class="hint">金額の可否・根拠はご自身で判断してください。この道具は決めません。</p>
         </fieldset>
@@ -174,7 +175,7 @@
     </div>
 
     <div class="outcol">
-      <section class="out" id="outTop" aria-live="polite">
+      <section class="out" id="outTop">
         <h2>出来上がった文面</h2>
         <div class="warn" id="warn" hidden></div>
         <div class="subj" id="subj" hidden></div>
@@ -250,7 +251,7 @@ var CM = (function () {
         { id: 'disaster', label: '災害の影響がある', t: '災害の影響があり' },
         { id: 'weather', label: '天候の影響がある', t: '天候の影響があり' }
       ] },
-    { id: 'reply', label: 'お客様の|キャンセルへの返信', reasonLegend: '2. お客様のキャンセル理由', dtLabel: '予約の日時',
+    { id: 'reply', label: 'お客様の|キャンセル返信', reasonLegend: '2. お客様のキャンセル理由', dtLabel: '予約の日時',
       refund: true, fee: true,
       alts: { propose: '次回の日時を提案する', later: 'また連絡をお願いする', none: '触れない' },
       reasons: [
@@ -265,7 +266,7 @@ var CM = (function () {
       reasons: [
         { id: 'staff', label: 'スタッフの都合がつかない', t: 'スタッフの都合がつかなくなってしまい' },
         { id: 'equip', label: '設備の点検・修理が入った', t: '設備の点検・修理が入ってしまい' },
-        { id: 'sched', label: '別の予定と調整がつかない', t: '別の予定との調整がつかず' },
+        { id: 'sched', label: '営業日・営業時間を変更する', t: '営業日・営業時間を変更することになり' },
         { id: 'none', label: '理由は伝えない', t: 'こちらの都合で' }
       ] }
   ];
@@ -277,9 +278,11 @@ var CM = (function () {
   function trim(s) { return String(s == null ? '' : s).replace(/^[\s　]+|[\s　]+$/g, ''); }
 
   function fmtAmount(raw) {
-    var d = String(raw == null ? '' : raw).replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/[^0-9]/g, '');
-    if (!d) return '';
+    var d = String(raw == null ? '' : raw).replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+    d = d.replace(/[\s　,，、]/g, '').replace(/円$/, '');
+    if (!/^[0-9]+$/.test(d)) return '';
     d = d.replace(/^0+(?=\d)/, '');
+    if (d === '0') return '';
     return d.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '円';
   }
 
@@ -292,17 +295,20 @@ var CM = (function () {
     var dt = trim(st.dt) || PH_DT;
     var shop = trim(st.shop) || PH_SHOP;
     var nm = trim(st.name);
+    nm = nm.replace(/(様|さま|さん|御中)$/, '');
     var callee = (nm ? nm + '様' : 'お客様');
     var alt = trim(st.altText) || PH_ALT;
     var altMode = st.alt || 'none';
 
+    var sep = fm ? '\n\n' : '\n';
     var greet;
-    if (medium === 'mail') greet = callee + '\n\nいつもご利用いただきありがとうございます。' + shop + 'です。';
-    else if (medium === 'dm') greet = callee + '\nご連絡失礼いたします。' + shop + 'です。';
-    else greet = callee + '\nお世話になっております。' + shop + 'です。';
+    if (scene.id === 'full') greet = callee + sep + 'ご予約のご希望をいただき、ありがとうございます。' + shop + 'です。';
+    else if (scene.id === 'reply') greet = callee + sep + shop + 'です。';
+    else if (medium === 'dm') greet = callee + sep + 'ご連絡失礼いたします。' + shop + 'です。';
+    else greet = callee + sep + shop + 'です。ご予約の件でご連絡いたします。';
 
     var apologyBooked = fm ? 'ご予定を空けていただいていたにもかかわらず、このようなご連絡となり、誠に申し訳ございません。'
-                           : 'ご予定を空けていただいていたのに、申し訳ありません。';
+                           : 'ご予定を空けていただいていたにもかかわらず、申し訳ございません。';
     var apologyDecline = fm ? 'ご希望に沿えず、誠に申し訳ございません。' : 'ご希望に沿えず申し訳ありません。';
     var apologyAsk = fm ? 'お手数をおかけしますが、ご検討いただけますと幸いです。' : 'お手数をおかけしますが、ご検討をお願いします。';
     var close = medium === 'mail' ? '何卒よろしくお願い申し上げます。' : (medium === 'dm' ? 'よろしくお願いいたします。' : 'よろしくお願いします。');
@@ -320,41 +326,40 @@ var CM = (function () {
       else if (altMode === 'later') paras.push('あらためてご都合をお伺いし、代わりの日程をご相談させていただけますでしょうか。');
     } else if (scene.id === 'full') {
       subject = 'ご予約のご希望について（お返事）';
-      paras.push('ご予約のご希望をいただき、ありがとうございます。');
-      paras.push(dt + 'のご希望は、' + reason.t + '、今回はお受けすることができませんでした。' + apologyDecline);
+      paras.push(dt + 'のご希望は、' + reason.t + '、今回はお引き受けすることができませんでした。' + apologyDecline);
       if (altMode === 'propose') paras.push(alt + 'でしたらご用意できます。いかがでしょうか。');
       else if (altMode === 'later') paras.push('空きが出ましたら、あらためてご連絡いたします。');
     } else if (scene.id === 'sick') {
       subject = '【お知らせ】' + dt + 'のご予約について';
-      paras.push(dt + 'にご予約をいただいておりましたが、' + reason.t + '、当日のご予約への対応が難しくなってしまいました。');
+      paras.push(dt + 'にご予約をいただいておりましたが、' + reason.t + '、ご予約のお日にちに対応することが難しくなってしまいました。');
       paras.push(apologyBooked);
       if (altMode === 'propose') paras.push('つきましては、' + alt + 'でしたらご案内できます。ご都合はいかがでしょうか。');
       else if (altMode === 'later') paras.push('状況が落ち着きましたら、あらためてご連絡のうえ、代わりの日程をご相談させてください。');
     } else if (scene.id === 'weather') {
       subject = '【お知らせ】' + dt + 'のご予約について（お休みのご連絡）';
-      paras.push(dt + 'のご予約について、' + reason.t + '、お客様とスタッフの安全を考え、当日はお休みとさせていただくことにいたしました。');
+      paras.push(dt + 'のご予約について、' + reason.t + '、お客様とスタッフの安全を考え、お休みとさせていただくことにいたしました。');
       paras.push(apologyBooked);
       if (altMode === 'propose') paras.push('代わりに、' + alt + 'でしたらご案内できます。ご都合はいかがでしょうか。');
       else if (altMode === 'later') paras.push('天候が落ち着きましたら、あらためてご連絡し、代わりの日程をご相談させてください。');
     } else if (scene.id === 'reply') {
       subject = '【' + dt + '】ご予約キャンセルの件、承知いたしました';
       paras.push(dt + 'のご予約のキャンセル、承知いたしました。ご連絡をありがとうございます。');
-      if (reason.ack) paras.push(reason.ack);
+      if (reason.ack && st.fee !== 'ask') paras.push(reason.ack);
       if (st.fee === 'waive') paras.push('今回のキャンセルに伴うキャンセル料はいただきませんので、ご安心ください。');
-      else if (st.fee === 'ask') paras.push('なお、キャンセル料として' + (fmtAmount(st.feeAmt) || PH_AMT) + 'について、ご相談させていただけますでしょうか。');
+      else if (st.fee === 'ask') paras.push('なお、キャンセル料（' + (fmtAmount(st.feeAmt) || PH_AMT) + '）について、ご相談させていただけますでしょうか。');
       if (altMode === 'propose') paras.push('もしよろしければ、' + alt + 'はいかがでしょうか。');
       else if (altMode === 'later') paras.push('またご都合のよいときに、お気軽にご連絡ください。');
       close = medium === 'mail' ? 'またのご利用を心よりお待ちしております。' : 'またのご利用をお待ちしております。';
     } else { /* resched */
       subject = '【ご相談】' + dt + 'のご予約の日程について';
-      paras.push(dt + 'にご予約をいただいておりましたが、' + reason.t + '、日程を変更していただくことは可能でしょうか。');
+      paras.push(dt + 'にご予約をいただいておりましたが、' + reason.t + '、' + (fm ? '誠に申し訳ございませんが' : '申し訳ありませんが') + '、日程を変更していただくことは可能でしょうか。');
       if (altMode === 'propose') paras.push('もし可能でしたら、' + alt + 'はいかがでしょうか。ご都合が合わない場合は、ほかの日程もご相談ください。');
       else if (altMode === 'later') paras.push('こちらで候補日を整理し、あらためてご連絡いたします。');
       else paras.push('ご都合のよい日程をお知らせいただけますでしょうか。');
-      paras.push(apologyAsk);
+      if (altMode !== 'later') paras.push(apologyAsk);
     }
 
-    if (scene.refund && st.refund) paras.push(refundLine);
+    if (scene.refund && st.refund) paras.push(st.fee === 'ask' ? 'お支払い済みの分のお取り扱いは、あらためてご案内いたします。' : refundLine);
 
     var body = greet + '\n\n' + paras.join('\n\n') + '\n\n' + close + (sign ? '\n\n' + sign : '');
     var found = body.match(/〔[^〕]*〕/g) || [];
@@ -447,7 +452,10 @@ var CM = (function () {
   function setMsg(t, cls) { var m = $('msg'); m.textContent = t; m.className = 'msg ' + (cls || ''); }
 
   function copyText(text, label) {
-    function ok() { setMsg(label + 'をコピーしました。送る前に読み返してください。', 'ok'); }
+    function ok() {
+      if (label === '本文' && last.placeholders.length) setMsg('コピーしました。ただし、未入力の〔 〕が残っています。送る前に直してください。', 'err');
+      else setMsg(label + 'をコピーしました。送る前に読み返してください。', 'ok');
+    }
     function manual() {
       var ta = $('manual'); ta.hidden = false; ta.value = text;
       try { ta.focus(); ta.select(); ta.setSelectionRange(0, text.length); } catch (e) {}
@@ -455,7 +463,7 @@ var CM = (function () {
     }
     function legacy() {
       var ta = document.createElement('textarea');
-      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.left = '0'; ta.style.opacity = '0';
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.fontSize = '16px'; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.left = '0'; ta.style.opacity = '0';
       document.body.appendChild(ta);
       var done = false;
       try { ta.focus(); ta.select(); ta.setSelectionRange(0, text.length); done = document.execCommand('copy'); } catch (e) { done = false; }
